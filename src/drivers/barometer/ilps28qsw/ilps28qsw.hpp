@@ -80,6 +80,8 @@ private:
 
 	uORB::PublicationMulti<sensor_baro_s> _sensor_baro_pub{ORB_ID(sensor_baro)};
 
+	perf_counter_t		_sample_perf;
+	perf_counter_t		_comms_errors;
 	const bool		_keep_retrying;
 	State			_state{State::Detect};
 };

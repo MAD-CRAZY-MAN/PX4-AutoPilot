@@ -47,12 +47,16 @@ static void getTwosComplement(T &raw, uint8_t length)
 ILPS28QSW::ILPS28QSW(const I2CSPIDriverConfig &config) :
 	I2C(config),
 	I2CSPIDriver(config),
+	_sample_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": read")),
+	_comms_errors(perf_alloc(PC_COUNT, MODULE_NAME": comm errors")),
 	_keep_retrying(config.keep_running)
 {
 }
 
 ILPS28QSW::~ILPS28QSW()
 {
+	perf_free(_sample_perf);
+	perf_free(_comms_errors);
 }
 
 int ILPS28QSW::init()
@@ -151,9 +155,12 @@ void ILPS28QSW::RunImpl()
 		break;
 
 	case State::Running:
+		perf_begin(_sample_perf);
 		uint8_t data[6]; // STATUS, PRESS_OUT_H, PRESS_OUT_L, PRESS_OUT_XL, TEMP_OUT_H, TEMP_OUT_L
 
 		if (read((uint8_t)Register::STATUS, data, sizeof(data)) != PX4_OK) {
+			perf_count(_comms_errors);
+			perf_end(_sample_perf);
 			ScheduleDelayed(10_ms);
 			_state = State::Reset;
 			return;
@@ -161,7 +168,8 @@ void ILPS28QSW::RunImpl()
 
 		uint8_t status = data[0];
 
-		if ((status & P_DA) == 0) {
+		if ((status & P_DA) == 0) { // check if pressure data is available
+			perf_end(_sample_perf);
 			ScheduleDelayed(1000000 / SAMPLE_RATE);
 			return;
 		}
@@ -180,11 +188,12 @@ void ILPS28QSW::RunImpl()
 		sensor_baro.device_id = get_device_id();
 		sensor_baro.pressure = pressure_pa;
 		sensor_baro.temperature = temp;
-		// error count
+		sensor_baro.error_count = perf_event_count(_comms_errors);
 		sensor_baro.timestamp = hrt_absolute_time();
 
 		_sensor_baro_pub.publish(sensor_baro);
 
+		perf_end(_sample_perf);
 		ScheduleDelayed(1000000 / SAMPLE_RATE);
 		break;
 	}
@@ -223,4 +232,6 @@ int ILPS28QSW::RegisterWrite(Register reg, uint8_t val)
 void ILPS28QSW::print_status()
 {
 	I2CSPIDriverBase::print_status();
+	perf_print_counter(_sample_perf);
+	perf_print_counter(_comms_errors);
 }
