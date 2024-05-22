@@ -175,7 +175,9 @@ void ILPS28QSW::RunImpl()
 		}
 
 		hrt_abstime timestamp_sample = hrt_absolute_time();
-		float temp = ((int16_t)data[4] | (data[5] << 8)) / 100.f;
+		int16_t temp_raw = ((int16_t)data[4] | (data[5] << 8));
+		getTwosComplement(temp_raw, 16);
+		float temp = temp_raw / 100.f;
 
 		int32_t Praw = (int32_t)data[1] | (data[2] << 8) | (data[3] << 16);
 		getTwosComplement(Praw, 24);
