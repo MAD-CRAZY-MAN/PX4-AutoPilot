@@ -5,7 +5,8 @@
 board_adc start
 
 # SPI1
-ms5611 -s -b 1 start
+#ms5611 -s -b 1 start
+ilps28qsw -X start
 
 icm20602 -s -b 1 -R 8 start
 mpu9250 -s -b 1 -R 8 -M start

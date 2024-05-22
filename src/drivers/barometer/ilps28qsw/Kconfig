@@ -1,0 +1,5 @@
+menuconfig DRIVERS_BAROMETER_ILPS28QSW
+	bool "ilps28qsw"
+	default n
+	---help---
+		Enable support for ilps28qsw
